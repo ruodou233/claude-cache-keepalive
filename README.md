@@ -1,6 +1,6 @@
 # claude-cache-keepalive
 
-Claude 缓存保温：实测 TTL、按环境设计保温节拍，控制反复冷读的成本。
+Claude 的提示缓存命中时，读取成本仅为正常价格的 10%——但缓存有 TTL，过期就白费。这个 skill 提供经过实测的保温策略，按运行环境自动选择节拍，最高可把 token 消耗压低 90%。方案不局限于 Claude Code，各种 Agent 场景都能复用。
 
 > **使用前必须先读**
 >
@@ -86,8 +86,8 @@ git clone https://github.com/ruodou233/claude-cache-keepalive.git ~/.agents/skil
 ## 相关 Skill 推荐
 
 <!-- 本表由维护脚本生成，勿手工编辑 -->
-- [agent-orchestration](https://github.com/ruodou233/agent-orchestration)：长任务治理：主代理指挥、子代理干活、状态落盘、断点续跑
-- [cross-review](https://github.com/ruodou233/cross-review)：跨厂商双审：让另一家公司的最强模型独立审你的方案
-- [upgrade-audit](https://github.com/ruodou233/upgrade-audit)：升级审计：让 Agent 定期把对话里的知识沉淀进文档体系
+- [agent-orchestration](https://github.com/ruodou233/agent-orchestration)：长任务/过夜流程编排，Agent 自主跑、自主省 token，不用你盯
+- [cross-review](https://github.com/ruodou233/cross-review)：跨模型双审，让 AI 自己把活干完整，不用你擦屁股
+- [upgrade-audit](https://github.com/ruodou233/upgrade-audit)：AI 每天自主升级知识体系，教一遍就会，不用反复纠正
 
 完整目录见 [GitHub 主页](https://github.com/ruodou233)。
