@@ -1,87 +1,81 @@
-# claude-cache-keepalive
+# cache-keepalive
 
-Claude 的提示缓存命中时，读取成本仅为正常价格的 10%——但缓存有 TTL，过期就白费。这个 skill 提供经过实测的保温策略，按运行环境自动选择节拍，最高可把 token 消耗压低 90%。方案不局限于 Claude Code，各种 Agent 场景都能复用。
+Claude Code 与 Codex 的提示缓存自动保温方法。它解决的是：长会话暂时没人输入时，
+怎样用有上限、可验真的短请求刷新“正在使用的同一个会话前缀”，避免回来后冷重建。
 
-> **使用前必须先读**
->
-> 1. **本 skill 仅适用 Claude 侧。**OpenAI 侧缓存全自动、无显式写入费，通常没有保温需求；原文结论保留在 `SKILL.md`。
-> 2. **TTL 有官方口径与实测静默波动史。**本文数值截至 2026-07，随平台策略可能变化，一切以你的本机实测为准。
-> 3. **保温会消耗真实额度或费用。**只在明确等待场景按上限使用，不要默认后台常开，不得用于规避限额或制造无意义请求。
+> 保温请求仍是一次真实模型调用，会消耗套餐额度或 API 费用。不同产品链路的 TTL
+> 不能互相外推；先做本机冷/热对照和链式实测，再冻结节拍。
 
-## 这是什么
+## 当前建议
 
-Claude 的提示缓存 TTL 会随使用环境变化：订阅侧主会话、超限 credits、API 直连、子代理和强制覆盖配置，都可能对应不同的缓存行为。这个 skill 帮 Agent 先做本机 TTL 实测，再按实测结果设计等待期间的 keepalive 节拍。它只适用于明确等待场景，不是后台常驻机制，也不是绕过额度限制的工具。
+| 环境 | 建议 |
+|---|---|
+| Claude Code 订阅主会话 | 50 分钟，默认最多 2 拍；正式启用前验证 2×50 分钟连续命中 |
+| Claude API / 子代理等 5 分钟环境 | 270 秒起步，逐拍验证 usage |
+| OpenAI API | 优先使用官方 `prompt_cache_options.ttl` |
+| ChatGPT 订阅下 Codex CLI | 不套用 API TTL，按同 thread 本机实测决定 |
 
-核心思路是：先判断环境，再经使用者同意读取 usage 做自检，然后用 `实测 TTL * 0.8` 计算节拍，并且每拍都做命中校验。命中失败就停链，避免把保温变成连续冷读。
+作者环境在 2026-07-25 的 Codex 受控结果：两个独立约 45k input 链在冷重建后
++6、+8、+10 分钟均命中，15 和 25 分钟未命中会话长前缀，因此选择 450 秒、
+最多 8 拍。样本量是每档 2，不代表未来版本或其他账户的固定 TTL。
+同版本同 thread 的 60 秒对照还显示 `low→medium` 会使 44,800 cached 降为 0，
+恢复 `low` 后重新命中；自动 resume 因此必须继承原 turn 的 model+effort。
+一次性 `codex exec` worker 不应保温；实现应依据 rollout 的 `source=exec`
+（或 `originator=codex_exec`）排除，并允许自动化用 `CODEX_KEEPALIVE_SKIP=1` 显式跳过。
+作者实现先以 `codex-keepalive-ctl mode verify --interval 450 --cap 8` 取证，至少
+一拍真实命中后才切生产；CLI 版本变化还要复查 resume 后原 thread 的 session source
+仍是 `cli`。
 
-## 核心功能
+完整的实验判据、自动状态机、安全边界与验收清单见 [SKILL.md](SKILL.md)。
 
-- 区分订阅侧主会话、超限 credits、API 直连、子代理和强制覆盖环境。
-- 把 TTL 实测自检作为首次使用第一步，而不是套用固定数值。
-- 支持两类等待场景：超长后台等待、等使用者回复的改进循环。
-- 提供每拍命中校验硬规则，TTL 变化或不可判定时立即停链。
-- 提供 local-config 模板，把本机 TTL、节拍和拍数上限外置。
+## 设计要点
 
-## 安装
+- 程序在真实回合结束后默认登记；模型不负责决定是否启动。
+- 保温轮只允许返回 `KEEPALIVE_CONTINUE` 或 `KEEPALIVE_STOP`，任何异常停链。
+- 合成轮在 hook 层拒绝工具，不能只靠提示词约束。
+- 用户真实输入永远优先；缓存优化不得阻断正常工作。
+- 设静默期、thread 生命周期、每日请求和全局并发多层上限。
+- 版本变化、休眠过期、限流、配额或 cache-read 不足时自动熔断。
+- 最近一轮 input 少于 20k 时跳过，避免短会话无收益调用。
+
+每一组合成提示和回复都会永久进入会话历史；当前 CLI 没有通用、安全的删除办法。
+固定短文本、自我限定措辞和生命周期上限只能控制污染。
+
+## 安装 skill
 
 Claude Code：
 
 ```bash
-git clone https://github.com/ruodou233/claude-cache-keepalive.git ~/.claude/skills/claude-cache-keepalive
+git clone https://github.com/ruodou233/claude-cache-keepalive.git \
+  ~/.claude/skills/cache-keepalive
 ```
 
 Codex：
 
 ```bash
-git clone https://github.com/ruodou233/claude-cache-keepalive.git ~/.agents/skills/claude-cache-keepalive
+git clone https://github.com/ruodou233/claude-cache-keepalive.git \
+  ~/.agents/skills/cache-keepalive
 ```
 
-其他支持 `SKILL.md` 的平台：把本仓库放入其 skills 目录即可。
+这个公开仓提供设计与验收规范，不假定你的 CLI 版本、账户链路或本机 hook 配置。
+让 Agent 读取 `SKILL.md` 后先盘点环境、做受控实测，再生成适配本机的安装方案。
 
-## 使用示例
+## 官方资料
 
-```text
-帮我判断当前 Claude 会话的缓存 TTL，要不要布 keepalive。
-```
-
-预期行为：Agent 先说明需要读取哪些 usage / transcript 数据，征得同意后做 TTL 自检，再给出是否保温和节拍建议。
-
-```text
-这个后台任务可能要 2 小时，帮我按缓存 TTL 布保温拍。
-```
-
-预期行为：Agent 判断是否属于场景 A，按本机实测 TTL 计算拍距和上限，每拍校验命中。
-
-```text
-我可能一小时后回来，你可以继续做轻量确认，但不要改核心文件。
-```
-
-预期行为：Agent 判断是否属于场景 B，只安排低风险、可丢弃的小活；没有新事实或达到上限即停。
-
-## 首次使用：环境自适应
-
-首次使用时，让 Agent 只读判断当前 Claude 环境类型。读取本会话 transcript / usage 数据前，Agent 必须先说明读取范围和目的，并获得你的明确同意。之后根据实测 TTL 计算节拍与拍数上限，写入：
-
-```text
-~/.config/agentops-skills/claude-cache-keepalive/local-config.md
-```
-
-无法写该路径时，可退回 skill 目录内 `local-config.md`。格式参考 `local-config.example.md`。
+- [Claude Code prompt caching](https://code.claude.com/docs/en/prompt-caching)
+- [OpenAI prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)
 
 ## Changelog
 
 | 时间 | 变更 |
 |---|---|
+| 2026-07-25 | 改为 Claude Code + Codex 双侧自动保温；加入链式实测、程序调度、工具拒绝与多层上限 |
 | 2026-07 | 首次开源发布 |
 
-## 反馈与作者
+## 反馈
 
-这个 skill 我长期维护。如果你有修改方案、发现问题、或者改出了更好的版本，欢迎通过以下任一渠道找到我：
-
-- GitHub：本仓库提 issue 或 PR
-- 小红书：错误乱码
-- 微信公众号：能工智人错误乱码
-- B站：若逗道人
+欢迎在 [GitHub](https://github.com/ruodou233/claude-cache-keepalive) 提 issue 或 PR，
+尤其欢迎附 CLI 版本、账户链路、冷/热对照和链式 usage 的可复现实测。
 
 ## 相关 Skill 推荐
 
