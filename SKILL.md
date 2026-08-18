@@ -47,11 +47,13 @@ description: Claude Code 与 Codex 的提示缓存自动保温。用于检查、
 - Claude Code prompt caching：<https://code.claude.com/docs/en/prompt-caching>
 - OpenAI prompt caching：<https://developers.openai.com/api/docs/guides/prompt-caching>
 
-Claude 当前 cache key 不包含 effort；不要再用“切 effort 必然破缓存”作为通用规则。
-模型切换仍视为不同缓存。Codex 没有稳定公开保证；作者环境 Codex CLI
-0.146.0-alpha.3.1 的同 thread 60 秒对照里，`low→medium` 使 44,800 cached 降为 0，
-恢复 `low` 后再次命中 44,800。因此 Codex 调度器必须继承原 turn 的 model+effort，
-其他版本仍以运行期 usage 验证。
+Claude 的 cache key 同时包含 model 和 effort（2026-08-18 按官方文档核验；此前本文
+「cache key 不含 effort」的结论已失效）：Messages API 文档写明改 `output_config.effort`
+必然使 message blocks 失效，显式设成该模型默认档等同于不传、不失效；Claude Code 侧
+同样以 effort 为键，`/effort` 切档前会弹确认框。Codex 没有稳定公开保证；作者环境
+Codex CLI 0.146.0-alpha.3.1 的同 thread 60 秒对照里，`low→medium` 使 44,800 cached
+降为 0，恢复 `low` 后再次命中 44,800。两侧结论一致：调度器必须继承原 turn 的
+model+effort，切档放阶段断点；其他版本仍以运行期 usage 验证。
 
 ## 先实测，再冻结节拍
 
