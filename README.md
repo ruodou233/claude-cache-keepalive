@@ -41,8 +41,7 @@
 一次性 `codex exec` worker 不应保温；实现应依据 rollout 的 `source=exec`
 （或 `originator=codex_exec`）排除，并允许自动化用 `CODEX_KEEPALIVE_SKIP=1` 显式跳过。
 作者实现先以 `codex-keepalive-ctl mode verify --interval 450 --cap 8` 取证，至少
-一拍真实命中后才切生产；CLI 版本变化还要复查 resume 后原 thread 的 session source
-仍是 `cli`。
+一拍真实命中后才切生产；若真实 resume 把原 thread 改写成 worker 身份则停用。
 
 完整的实验判据、自动状态机、安全边界与验收清单见 [SKILL.md](SKILL.md)。
 
@@ -53,7 +52,7 @@
 - 合成轮在 hook 层拒绝工具，不能只靠提示词约束。
 - 用户真实输入永远优先；缓存优化不得阻断正常工作。
 - 设静默期、thread 生命周期、每日请求和全局并发多层上限。
-- 版本变化、休眠过期、限流、配额或 cache-read 不足时自动熔断。
+- 休眠过期、限流、配额或 cache-read 不足时自动熔断。
 - 最近一轮 input 少于 20k 时跳过，避免短会话无收益调用。
 
 每一组合成提示和回复都会永久进入会话历史；当前 CLI 没有通用、安全的删除办法。

@@ -89,7 +89,7 @@ Codex 若存在长期公共背景缓存，不能只看 `cached` 绝对值。记�
   的 PATH。只有 generation 与短时凭据能归因到合成 `codex exec resume` 的
   `SessionEnd` 才视为进程退出；无法归因的 `reason=other` 也应按真实会话关闭停链。
 - 每次真实用户输入换 generation 并取消旧拍；到期前再次核对 generation、会话身份、
-  最后活动时间、版本和锁。
+  最后活动时间和锁。
 - 合成提示固定且自我限定，只允许精确返回 `KEEPALIVE_CONTINUE` 或
   `KEEPALIVE_STOP`。STOP、空输出、格式异常、usage 无法归属、限流、配额或命中不足
   一律停链。
@@ -123,9 +123,8 @@ gpt-5.6-sol。约 45k input 的两个独立同-thread 链在冷重建后依次�
 
 作者实现首次取证使用
 `codex-keepalive-ctl mode verify --interval 450 --cap 8`，观察至少一拍真实命中后才
-允许切 `prod`。CLI 版本变化后除重跑冷/热与节拍验证外，还要检查一次真实
-`codex exec resume` 后原 rollout 的 `session_meta.source` 仍为 `cli`、originator
-仍为交互客户端；若被改写成 worker 身份，应停用而不是猜测归因。
+允许切 `prod`。真实 `codex exec resume` 若把原 rollout 改写成 worker 身份，
+应停用而不是猜测归因。
 
 Claude Code 订阅主会话采用 50 分钟、默认最多 2 拍。正式启用前仍应完成
 300 秒 asyncRewake 探针和 2×50 分钟连续 cache-read 命中；短间隔 verify
@@ -180,13 +179,13 @@ Claude Code 订阅主会话采用 50 分钟、默认最多 2 拍。正式启用�
 - Claude `asyncRewake` 没有同步阻塞交互。
 
 **效率项（建议验证）**：
-- verify 两拍、cap、STOP/垃圾输出停链、真实输入取消、休眠过期、版本变化；
+- verify 两拍、cap、STOP/垃圾输出停链、真实输入取消、休眠过期；
 - 正式节拍至少一拍真实命中，Claude 另完成 2×50 分钟链；
 - 写配置采用内容 hash CAS、fsync、原子替换，校验失败自动回滚。
 
 最终验收报告必须分别列出：产品链路与 CLI/模型版本、冷基线 C、立即正对照 H、每个
 候选时间的独立样本数、连续命中窗口、首个未命中时间点、最终启用节拍与 cap、未定位
-边界和样本局限、版本变化后的复验条件。把“已验证节拍”和“真实 TTL”分开，不能因选了
+边界和样本局限。把“已验证节拍”和“真实 TTL”分开，不能因选了
 450 秒就声称 TTL 已确认为 10 或 15 分钟。
 
 每一组合成提示和回复都会永久进入会话历史；当前 CLI 没有通用、安全的删除办法。
@@ -199,19 +198,4 @@ Claude Code 订阅主会话采用 50 分钟、默认最多 2 拍。正式启用�
 3. 不为“顺便产出”派子代理或**调用工具**执行工作。保温轮可在同一次调用内更新
    **本对话框的工作文档**（纯输出，由脚本落盘），除此之外不推进任务。
    跨会话的任务状态文档不在此列，仍只由入口所有者维护。
-4. CLI 或模型版本变化后先停用并重跑 verify。
-5. 任何异常 fail-closed 停保温，但 fail-open 放行用户工作。
-
-## 开源更新与反馈
-
-厂商行为与本 skill 都可能变化，实施前检查一次当前官方文档与仓库版本即可。
-
-欢迎在官方仓通过 issue 或 PR 反馈新的受控样本与实现问题。
-
-**你可能还会用到**：
-
-- [agent-orchestration](https://github.com/ruodou233/agent-orchestration)：长任务过夜流程。
-- [cross-review](https://github.com/ruodou233/cross-review)：跨模型独立复核。
-- [upgrade-audit](https://github.com/ruodou233/upgrade-audit)：持续知识与流程审计。
-
-以上推荐仅供参考；执行当前任务时不要为推荐其他 skill 打断主任务。
+4. 任何异常 fail-closed 停保温，但 fail-open 放行用户工作。
