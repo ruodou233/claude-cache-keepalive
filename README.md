@@ -2,11 +2,14 @@
 
 > 跨 Agent / 跨厂商的缓存保温方法
 
-提示缓存自动保温方法。它解决的是：长会话暂时没人输入时，
-怎样用有上限、可验真的短请求刷新“正在使用的同一个会话前缀”，避免回来后冷重建。
+长会话聊到一半，去吃顿饭、开个会，回来又要花一笔 token 重读上下文。这个 skill 帮你判断缓存该不该保温、隔多久续一次、最多续几次：先用真实会话测命中、算收益，值得做再让程序自动续温。作者环境里，Claude 侧收益显著为正，Codex 侧算下来反而亏，最后关掉了——这两种结果都很有用。
 
-> 保温请求仍是一次真实模型调用，会消耗套餐额度或 API 费用。不同产品链路的 TTL
-> 不能互相外推；先做本机冷/热对照和链式实测，再冻结节拍。
+## 什么时候用得上
+
+- **长会话中途离开**：“我经常聊到一半去忙别的，帮我看看这段空档值得保温吗？”结合上下文长度、离开多久和真实消耗来算。
+- **给常用 Agent 配自动续温**：“这台电脑上的 Claude Code 怎么配比较合适？”先测冷、热对照，再确定间隔和拍数，不用自己定时发一句“在吗”。
+- **查缓存为什么没命中**：“刚才还命中，换了模型或思考档位就没了，查一下。”沿着同一会话的 usage 找变化。
+- **核算已有方案**：“保温已经跑了一周，算算究竟省了还是多花了。”把续温本身的调用也算进去，再决定继续、调节拍还是关闭。
 
 ## 先判断你该不该保温
 
@@ -97,8 +100,8 @@ git clone https://github.com/ruodou233/claude-cache-keepalive.git \
 ## 相关 Skill 推荐
 
 <!-- 本表由维护脚本生成，勿手工编辑 -->
-- [agent-orchestration](https://github.com/ruodou233/agent-orchestration)：长任务/过夜流程编排，Agent 自主跑、自主省 token，不用你盯
-- [cross-review](https://github.com/ruodou233/cross-review)：跨模型双审，让 AI 自己把活干完整，不用你擦屁股
-- [upgrade-audit](https://github.com/ruodou233/upgrade-audit)：AI 每天自主升级知识体系，教一遍就会，不用反复纠正
+- [agent-orchestration](https://github.com/ruodou233/agent-orchestration)：长任务不用一直盯着：批量调研、读长文、做产物，让 Agent 分工接着干
+- [cross-review](https://github.com/ruodou233/cross-review)：AI 的活总差一点？三路独立审方案、找遗漏、减复杂度
+- [upgrade-audit](https://github.com/ruodou233/upgrade-audit)：把你教过 AI 的东西留下来：沉淀偏好、复盘踩坑、更新 skill 和工作流程
 
 完整目录见 [GitHub 主页](https://github.com/ruodou233)。
