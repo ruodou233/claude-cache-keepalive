@@ -1,6 +1,6 @@
 # 提示缓存保温｜Prompt Caching & Keepalive
 
-Measure prompt cache hits and costs, then configure automatic keepalive when the savings justify it.
+换成命中可以节省90%token。如果你五分钟内看不完AI的报告，可以考虑缓存保温。
 
 > 跨 Agent / 跨厂商的缓存保温方法
 
