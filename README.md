@@ -22,7 +22,7 @@ claude -p "hello" --output-format json
 
 **③ 还要保温，挑一个现成 mod**（Claude Code v2.1.287+）
 
-- [cache-tax](https://github.com/karanb192/cache-tax)：适合想在冷发送前被拦一下的人。`/keepwarm 90m` 开一个有边界的窗口，发消息前显示这次要重写多少钱。
+- [cache-tax](https://github.com/karanb192/cache-tax)：适合想在冷发送前被拦一下的人。`/keepwarm 90m` 开一个有边界的窗口，发消息前显示这次要重写多少钱。它默认每次冷写入后自动保温 3 小时，不想要就关掉 Auto keepwarm。
 - [cache-refresher](https://github.com/olddonkey/cache-refresher)：适合想先看账再决定的人。状态栏倒计时，面板并排列出过期一次和续温一次各多少钱，自动续温默认关。
 - [cache-warmer](https://github.com/paulbkim-dev/claude-code-cache-warmer)：适合想装上就不管的人。直接用 Pi 的续温公式，5 分钟和 1 小时两档都支持。
 
@@ -50,7 +50,7 @@ claude -p "hello" --output-format json
 续聊概率 × 重建代价 − 续温代价 ≥ 阈值   → 续温，否则停
 ```
 
-续聊概率是"已经空闲到这一拍的前提下，下一个缓存寿命内会回来"的比例，最该换成你自己的数据。它随空闲时长下降得很快，所以公式会自己停；触发点也就自然贴着**命中率开始衰减的那一点**，而不是贴着 TTL 边界。
+续聊概率是"已经空闲到这一拍的前提下，下一个缓存寿命内会回来"的比例，最该换成你自己的数据：它随空闲时长下降得很快，用真实数据算，公式会在合适的那一拍自己停，触发点贴着**命中率开始衰减的那一点**，而不是贴着 TTL 边界。Pi 和 cache-warmer 用固定的 0.15，公式不会自己停，靠的是另设的上限（30 分钟、5 拍）。
 
 1 小时 TTL 还要注意空闲压缩（idle compaction）：上下文 20 万 token 以上的会话，空闲约 54 分钟、缓存过期前会被自动压缩成摘要，正好撞上"55 分钟保温"。保温就设 `"idleCompaction": false`，或只对 20 万以下的会话保温。
 
@@ -129,7 +129,6 @@ git clone https://github.com/ruodou233/claude-cache-keepalive.git \
 
 ## 相关 Skill 推荐
 
-<!-- 本表由维护脚本生成，勿手工编辑 -->
 - [agent-orchestration](https://github.com/ruodou233/agent-orchestration)：复杂任务跑到半夜，你不可能一直盯着。让 Agent 分工跑长任务和批量工作，你只管第二天早上收结果。<br>Coordinate AI agents for long-running tasks, parallel work, and overnight workflows.
 - [cross-review](https://github.com/ruodou233/cross-review)：AI 的活总差一点，总要你擦屁股，总打丑补丁？让另一家 AI 挑刺复查，自己把活干完整，不用你一直兜底。<br>An agent skill for independent code and design reviews across AI providers, checking correctness, complexity, and better approaches.
 - [upgrade-audit](https://github.com/ruodou233/upgrade-audit)：把你教过 AI 的东西留下来：沉淀偏好、复盘踩坑、更新 skill 和工作流程<br>Review conversation history, agent memory, and skills to identify reusable lessons and propose updates to outdated instructions.
